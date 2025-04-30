@@ -4,53 +4,70 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http;
 using WebApplication2.Extentions;
 using Microsoft.AspNetCore.Server.HttpSys;
+using WebApplication2.Repositories;
 
 namespace WebApplication2.Controllers
 {
-   // [Authorize]
+    //[Authorize]
     [Route("    [controller]")]
     [ApiController]
     public class UsersController : ControllerBase
     {
-        DatabaseContext db;
-        public UsersController(DatabaseContext context)
+        private readonly IUsersRepository _usersRepository;
+        public UsersController(IUsersRepository usersRepository)
         {
-            db = context;
-            if (db.Users.Any())
-            {
-                db.Users.Add(new Users
-                {
-                    id = Guid.NewGuid(),    
-                    login = "Ivan",
-                    password = "12345"
-                });
-            }    
+            _usersRepository = usersRepository;
         }
-        [Authorize]
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Users>>> Get()
-        {
-            return await db.Users.AsNoTracking().ToListAsync();
-        }
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Users>> Get(Guid id)
-        {
-            Users? user = await db.Users.FirstOrDefaultAsync(x => x.id == id);
-            if (user == null) return NotFound();
-            return new ObjectResult(user);
-        }
-        [HttpPost]
 
-        public async Task<ActionResult<Users>> Put (Users users)
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<UsersEntity>>> Get()
         {
-            if (users == null) return BadRequest();
-            if (!db.Users.Any(x => x.id == users.id))
-            {
-                return NotFound();
-            }
-            db.Update(users);
-            await db.SaveChangesAsync();
+            var users = await _usersRepository.Get();
             return Ok(users);
+        }
+
+        [HttpGet("id")]
+        public async Task<ActionResult<UsersEntity>> GetById(Guid id)   
+        {
+            var user = await _usersRepository.GetById(id);
+            if (user == null)
+                return NotFound();
+            return Ok(user);
+        }
+        [HttpPut]
+        public async Task<ActionResult<UsersEntity>> Put(UsersEntity user)
+        {
+            if (user == null)
+                return BadRequest();
+
+            var existingUser = await _usersRepository.GetById(user.id);
+            if (existingUser == null)
+                return NotFound();
+
+            await _usersRepository.Update(user);
+            return Ok(user);
+        }
+
+        [HttpPost]
+        public async Task<ActionResult<UsersEntity>> CreateUser(UsersEntity user)
+        {
+
+            user.id = Guid.NewGuid();
+            var createdUser = await _usersRepository.Add(user);
+            return Ok(createdUser);
+
+        }
+        [HttpDelete]
+        public async Task<ActionResult<UsersEntity>> Delete(Guid id)
+        {
+            var user = await _usersRepository.GetById(id);
+            if (user != null)
+            {
+                await _usersRepository.Delete(id);
+                return Ok(user);
+            }
+            else
+                return BadRequest();
         }
     }
 }

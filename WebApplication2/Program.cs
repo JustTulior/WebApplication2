@@ -8,12 +8,22 @@ using System.Security.Claims;
 using WebApplication2;
 using WebApplication2.Extentions;
 using System.Configuration;
+using WebApplication2.Shops;
+using FluentMigrator.Runner;
+using System.Reflection;
+using WebApplication2.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
 
 var services = builder.Services;
 
+services.AddLogging(c => c.AddFluentMigratorConsole())
+                .AddFluentMigratorCore()
+                .ConfigureRunner(c => c
+                    .AddPostgres()
+                     .WithGlobalConnectionString("User ID=admin;Password=admin;Host=localhost;Port=5432;database=prod")
+                     .ScanIn(Assembly.GetExecutingAssembly()).For.All());
 services.AddControllers();
 services.AddEndpointsApiExplorer();
 services.AddHttpClient();
@@ -21,14 +31,6 @@ services.AddHttpClient();
 services.AddSwaggerGen(
 c =>
 {   
-c.AddSecurityDefinition("basic", new OpenApiSecurityScheme
-{
-    Name = "Authorization",
-    Type = SecuritySchemeType.Http,
-    Scheme = "basic",
-    In = ParameterLocation.Header,
-    Description = "Basic Authorization header using the Bearer scheme."
-});
 c.AddSecurityDefinition("bearerAuth", new OpenApiSecurityScheme()
 {
     Type = SecuritySchemeType.Http,
@@ -76,9 +78,9 @@ builder.Services.AddDbContext<DatabaseContext>(options =>
 {
     options.UseNpgsql(configuration.GetConnectionString(nameof(DatabaseContext)));
 });
+services.AddScoped<IShopsRepository, ShopsRepository>();
+services.AddScoped<IUsersRepository, UsersRepository>();
 
-//services.AddSingleton<IJwtServices, JwtService>();
-//services.AddScoped<IJwtServices, JwtService>();
 var app = builder.Build();
 app.UseCors("MyPolicy");
 app.MapControllers();
@@ -94,9 +96,5 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapHealthChecks("/weatherforecast")
-    .RequireAuthorization()
-    ;
-app.MapGet("/", () => "fgfg");
-app.MapGet("/users", () =>{ });
+app.Migrate();
 app.Run();

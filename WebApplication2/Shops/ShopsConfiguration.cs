@@ -3,9 +3,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace WebApplication2.Shops
     {
-    public class ShopsConfiguration: IEntityTypeConfiguration<Shops>
+    public class ShopsConfiguration: IEntityTypeConfiguration<ShopsEntity>
     {
-        public void Configure(EntityTypeBuilder<Shops> builder)
+        public void Configure(EntityTypeBuilder<ShopsEntity> builder)
         {
             builder.HasKey(x => x.id);
         }
